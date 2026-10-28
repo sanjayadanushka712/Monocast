@@ -1,0 +1,6 @@
+PyQt6
+Pillow
+numpy
+opencv-python
+imageio
+moviepy
