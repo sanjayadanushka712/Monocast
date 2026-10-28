@@ -10,14 +10,14 @@ from PIL import Image
 
 
 class ConversionSignals(QObject):
-    result_ready = pyqtSignal(object, bool)  # result, use_colors
+    result_ready = pyqtSignal(object, bool, object)  # result, use_colors, img_ref
 
 
 class ConversionTask(QRunnable):
     def __init__(self, converter, img, settings):
         super().__init__()
         self.converter = converter
-        self.img = img
+        self.img = img.copy()
         self.settings = settings
         self.signals = ConversionSignals()
 
@@ -31,9 +31,9 @@ class ConversionTask(QRunnable):
                 threshold=self.settings['threshold'],
                 use_colors=self.settings['use_colors'],
             )
-            self.signals.result_ready.emit(result, self.settings['use_colors'])
+            self.signals.result_ready.emit(result, self.settings['use_colors'], self.img)
         except Exception as e:
-            self.signals.result_ready.emit(e, False)
+            self.signals.result_ready.emit(e, False, self.img)
 
 
 class PreviewWidget(QWidget):
@@ -44,6 +44,7 @@ class PreviewWidget(QWidget):
         self.threadpool.setMaxThreadCount(2)
         self.current_file = None
         self.file_type = None
+        self.current_img = None
         self.settings = {
             'columns': 100,
             'charset': " .:-=+*#%@",
@@ -65,6 +66,8 @@ class PreviewWidget(QWidget):
 
         self.playing = False
         self._rendering = False
+        self._pending = False
+        self._pending_img = None
 
         self._init_ui()
 
@@ -79,8 +82,11 @@ class PreviewWidget(QWidget):
         self.text_edit = QTextEdit()
         self.text_edit.setReadOnly(True)
         self.text_edit.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
-        font = QFont("Courier New", 7)
+        font = QFont("Consolas", 7)
+        if not font.exactMatch():
+            font = QFont("Courier New", 7)
         font.setStyleHint(QFont.StyleHint.Monospace)
+        font.setFixedPitch(True)
         self.text_edit.setFont(font)
         self.text_edit.setStyleSheet("background-color: #000000; color: #ffffff;")
 
@@ -114,22 +120,33 @@ class PreviewWidget(QWidget):
         return None
 
     def _queue_convert(self, img: Image.Image):
+        self.current_img = img.copy()
         if self._rendering:
+            self._pending = True
+            self._pending_img = self.current_img
             return
         self._rendering = True
-        task = ConversionTask(self.converter, img, self.settings.copy())
+        self._pending = False
+        task = ConversionTask(self.converter, self.current_img, self.settings.copy())
         task.signals.result_ready.connect(self._on_conversion_done)
         self.threadpool.start(task)
 
-    @pyqtSlot(object, bool)
-    def _on_conversion_done(self, result, use_colors):
+    @pyqtSlot(object, bool, object)
+    def _on_conversion_done(self, result, use_colors, img_ref):
         self._rendering = False
+        if self._pending and self._pending_img is not None:
+            self._pending = False
+            pending = self._pending_img
+            self._pending_img = None
+            self._queue_convert(pending)
+            return
+
         if isinstance(result, Exception):
             self.text_edit.setPlainText(f"Error: {result}")
             return
         try:
             if use_colors and result.colors and result.rows > 0 and result.cols > 0:
-                if result.rows * result.cols > 8000:
+                if result.rows * result.cols > 6000:
                     self.text_edit.setPlainText(result.text)
                     return
                 self.text_edit.setUpdatesEnabled(False)
@@ -181,7 +198,7 @@ class PreviewWidget(QWidget):
             width, height, fps, frame_count = VideoHandler.get_video_info(filepath)
             gen = VideoHandler.frames_generator(filepath)
             self.video_frames = []
-            max_frames = min(80, frame_count) if frame_count > 0 else 25
+            max_frames = min(60, frame_count) if frame_count > 0 else 20
             step = max(1, frame_count // max_frames) if frame_count > 0 else 1
             frame_idx = 0
             for frame in gen:
@@ -195,7 +212,7 @@ class PreviewWidget(QWidget):
             if self.video_frames:
                 self._render_current_video_frame()
                 if fps and fps > 0:
-                    interval = max(40, int(1000 / min(fps, 12)))
+                    interval = max(60, int(1000 / min(fps, 10)))
                     self.video_timer.start(interval)
         except Exception as e:
             self.text_edit.setPlainText(f"Error: {e}")
@@ -225,7 +242,9 @@ class PreviewWidget(QWidget):
     @pyqtSlot(dict)
     def update_settings(self, settings):
         self.settings.update(settings)
-        if self.current_file and self.file_type == 'image':
+        if self.current_img is not None:
+            self._queue_convert(self.current_img)
+        elif self.current_file and self.file_type == 'image':
             try:
                 img = Image.open(self.current_file)
                 self._queue_convert(img)
