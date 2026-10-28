@@ -1,7 +1,7 @@
 """Pure image -> ASCII conversion utilities."""
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 from PIL import Image
@@ -16,19 +16,17 @@ class ImageToAsciiResult:
 
 
 class AsciiConverter:
-    """ASCII conversion logic ported from Glyphcast."""
-
     def __init__(self):
         pass
 
     def image_to_ascii(
         self,
         source: Union[Image.Image, np.ndarray],
-        columns: int = 100,
-        charset: str = " .:-=+*#%@",
+        columns: int = 140,
+        charset: str = " .'`^,:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
         invert: bool = False,
-        threshold: int = 0,
-        cell_aspect: float = 0.5,
+        threshold: int = -5,
+        cell_aspect: float = 0.55,
         use_colors: bool = False,
     ) -> ImageToAsciiResult:
         if isinstance(source, np.ndarray):
@@ -51,13 +49,12 @@ class AsciiConverter:
             return ImageToAsciiResult(text="", rows=0, cols=0)
 
         if not charset or len(charset) == 0:
-            charset = " .:-=+*#%@"
+            charset = " .'`^,:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$"
 
         cols = max(1, int(columns))
-        cell_aspect = max(0.1, float(cell_aspect))
+        cell_aspect = max(0.3, float(cell_aspect))
         rows = max(1, int(round((cols * src_h * cell_aspect) / src_w)))
 
-        # Downsample to ASCII grid
         resized = img.resize((cols, rows), Image.Resampling.LANCZOS)
         arr = np.array(resized).astype(np.float32)
 
@@ -68,10 +65,8 @@ class AsciiConverter:
         lum = lum + offset
         lum = np.clip(lum, 0, 255)
 
-        # Map luminance to charset (darkest -> index 0)
         charset_len = len(charset)
         last_idx = charset_len - 1
-        # Normalize to [0, last_idx]
         norm = lum / 255.0
         idx = (norm * last_idx).astype(np.int32)
         idx = np.clip(idx, 0, last_idx)
