@@ -10,8 +10,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QGroupBox,
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from core.palettes import ASCII_CHAR_PRESETS
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 
 
 class Sidebar(QWidget):
@@ -22,6 +21,10 @@ class Sidebar(QWidget):
         super().__init__()
         self.setMinimumWidth(250)
         self.setMaximumWidth(350)
+        self._debounce_timer = QTimer()
+        self._debounce_timer.setSingleShot(True)
+        self._debounce_timer.setInterval(150)
+        self._debounce_timer.timeout.connect(self._emit_settings)
         self._init_ui()
 
     def _init_ui(self):
@@ -70,11 +73,12 @@ class Sidebar(QWidget):
         # Charset
         conv_layout.addWidget(QLabel("Charset"))
         self.charset_combo = QComboBox()
+        from core.palettes import ASCII_CHAR_PRESETS
         self.charsets = []
         for preset in ASCII_CHAR_PRESETS:
             self.charset_combo.addItem(f"{preset['label']}")
             self.charsets.append(preset['chars'])
-        self.charset_combo.setCurrentIndex(2)  # Retro Terminal default like earlier
+        self.charset_combo.setCurrentIndex(2)
         self.charset_combo.currentIndexChanged.connect(self._on_settings_changed)
         conv_layout.addWidget(self.charset_combo)
 
@@ -105,7 +109,6 @@ class Sidebar(QWidget):
         scroll.setWidget(scroll_widget)
         layout.addWidget(scroll)
 
-        # Emit initial settings
         self._on_settings_changed()
 
     def _load_file(self):
@@ -124,6 +127,9 @@ class Sidebar(QWidget):
                 self.file_loaded.emit(filepath)
 
     def _on_settings_changed(self):
+        self._debounce_timer.start()
+
+    def _emit_settings(self):
         settings = {
             'columns': self.columns_slider.value(),
             'charset': self.charsets[self.charset_combo.currentIndex()] if self.charsets else " .:-=+*#%@",
