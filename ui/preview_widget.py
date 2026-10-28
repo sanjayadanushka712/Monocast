@@ -153,9 +153,7 @@ class PreviewWidget(QWidget):
             return
         try:
             if use_colors and result.colors and result.rows > 0 and result.cols > 0:
-                if result.rows * result.cols > 5000:
-                    self.text_edit.setPlainText(result.text)
-                    return
+                # Apply user colors as override if set, else use original colors
                 self.text_edit.setUpdatesEnabled(False)
                 self.text_edit.clear()
                 cursor = self.text_edit.textCursor()
@@ -167,9 +165,13 @@ class PreviewWidget(QWidget):
                         if ch == ' ':
                             cursor.insertText(' ', QTextCharFormat())
                             continue
-                        r, g, b = result.colors[y][x]
-                        cfmt = QTextCharFormat()
-                        cfmt.setForeground(QColor(int(r), int(g), int(b)))
+                        if use_colors and result.colors:
+                            r, g, b = result.colors[y][x]
+                            cfmt = QTextCharFormat()
+                            cfmt.setForeground(QColor(int(r), int(g), int(b)))
+                        else:
+                            cfmt = QTextCharFormat()
+                            cfmt.setForeground(QColor(self.text_color))
                         cfmt.setFont(self.text_edit.font())
                         cursor.insertText(ch, cfmt)
                     cursor.insertText('\n')
