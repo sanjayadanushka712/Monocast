@@ -9,13 +9,16 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
     QGroupBox,
+    QColorDialog,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from PyQt6.QtGui import QColor
 
 
 class Sidebar(QWidget):
     file_loaded = pyqtSignal(str)
     settings_changed = pyqtSignal(dict)
+    appearance_changed = pyqtSignal(dict)
 
     def __init__(self):
         super().__init__()
@@ -25,6 +28,8 @@ class Sidebar(QWidget):
         self._debounce_timer.setSingleShot(True)
         self._debounce_timer.setInterval(150)
         self._debounce_timer.timeout.connect(self._emit_settings)
+        self.bg_color = "#000000"
+        self.text_color = "#ffffff"
         self._init_ui()
 
     def _init_ui(self):
@@ -62,10 +67,10 @@ class Sidebar(QWidget):
         # Columns
         conv_layout.addWidget(QLabel("Columns"))
         self.columns_slider = QSlider(Qt.Orientation.Horizontal)
-        self.columns_slider.setRange(40, 300)
-        self.columns_slider.setValue(100)
+        self.columns_slider.setRange(40, 400)
+        self.columns_slider.setValue(120)
         self.columns_slider.valueChanged.connect(self._on_settings_changed)
-        self.columns_label = QLabel("100")
+        self.columns_label = QLabel("120")
         self.columns_slider.valueChanged.connect(lambda v: self.columns_label.setText(str(v)))
         conv_layout.addWidget(self.columns_slider)
         conv_layout.addWidget(self.columns_label)
@@ -104,12 +109,27 @@ class Sidebar(QWidget):
         conv_layout.addWidget(self.colors_check)
 
         scroll_layout.addWidget(conv_group)
+
+        # Appearance
+        app_group = QGroupBox("Appearance")
+        app_layout = QVBoxLayout(app_group)
+
+        bg_btn = QPushButton("Background Color")
+        bg_btn.clicked.connect(self._pick_bg)
+        app_layout.addWidget(bg_btn)
+
+        text_btn = QPushButton("Text Color")
+        text_btn.clicked.connect(self._pick_text)
+        app_layout.addWidget(text_btn)
+
+        scroll_layout.addWidget(app_group)
         scroll_layout.addStretch()
 
         scroll.setWidget(scroll_widget)
         layout.addWidget(scroll)
 
         self._on_settings_changed()
+        self._emit_appearance()
 
     def _load_file(self):
         file_dialog = QFileDialog(self)
@@ -138,3 +158,21 @@ class Sidebar(QWidget):
             'use_colors': self.colors_check.isChecked(),
         }
         self.settings_changed.emit(settings)
+
+    def _pick_bg(self):
+        color = QColorDialog.getColor(QColor(self.bg_color), self)
+        if color.isValid():
+            self.bg_color = color.name()
+            self._emit_appearance()
+
+    def _pick_text(self):
+        color = QColorDialog.getColor(QColor(self.text_color), self)
+        if color.isValid():
+            self.text_color = color.name()
+            self._emit_appearance()
+
+    def _emit_appearance(self):
+        self.appearance_changed.emit({
+            'bg_color': self.bg_color,
+            'text_color': self.text_color,
+        })
