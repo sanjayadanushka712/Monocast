@@ -153,7 +153,6 @@ class PreviewWidget(QWidget):
             return
         try:
             if use_colors and result.colors and result.rows > 0 and result.cols > 0:
-                # Apply user colors as override if set, else use original colors
                 self.text_edit.setUpdatesEnabled(False)
                 self.text_edit.clear()
                 cursor = self.text_edit.textCursor()
@@ -165,18 +164,16 @@ class PreviewWidget(QWidget):
                         if ch == ' ':
                             cursor.insertText(' ', QTextCharFormat())
                             continue
-                        if use_colors and result.colors:
-                            r, g, b = result.colors[y][x]
-                            cfmt = QTextCharFormat()
-                            cfmt.setForeground(QColor(int(r), int(g), int(b)))
-                        else:
-                            cfmt = QTextCharFormat()
-                            cfmt.setForeground(QColor(self.text_color))
+                        r, g, b = result.colors[y][x]
+                        cfmt = QTextCharFormat()
+                        cfmt.setForeground(QColor(int(r), int(g), int(b)))
                         cfmt.setFont(self.text_edit.font())
                         cursor.insertText(ch, cfmt)
                     cursor.insertText('\n')
                 self.text_edit.setUpdatesEnabled(True)
             else:
+                # Use appearance colors when not using per-pixel colors
+                self.text_edit.setStyleSheet(f"background-color: {self.bg_color}; color: {self.text_color};")
                 self.text_edit.setPlainText(result.text)
         except Exception as e:
             self.text_edit.setPlainText(f"Error: {e}")
