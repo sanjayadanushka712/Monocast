@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QTextEdit
-from PyQt6.QtCore import Qt, QTimer, pyqtSlot
+from PyQt6.QtCore import Qt, QTimer, pyqtSlot, QThreadPool, QRunnable, QObject, pyqtSignal
 from PyQt6.QtGui import QFont, QTextCharFormat, QColor
 import os
 
@@ -9,10 +9,39 @@ from core.video_handler import VideoHandler
 from PIL import Image
 
 
+class ConversionSignals(QObject):
+    result_ready = pyqtSignal(object, bool)  # result, use_colors
+
+
+class ConversionTask(QRunnable):
+    def __init__(self, converter, img, settings):
+        super().__init__()
+        self.converter = converter
+        self.img = img
+        self.settings = settings
+        self.signals = ConversionSignals()
+
+    def run(self):
+        try:
+            result = self.converter.image_to_ascii(
+                self.img,
+                columns=self.settings['columns'],
+                charset=self.settings['charset'],
+                invert=self.settings['invert'],
+                threshold=self.settings['threshold'],
+                use_colors=self.settings['use_colors'],
+            )
+            self.signals.result_ready.emit(result, self.settings['use_colors'])
+        except Exception as e:
+            self.signals.result_ready.emit(e, False)
+
+
 class PreviewWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.converter = AsciiConverter()
+        self.threadpool = QThreadPool()
+        self.threadpool.setMaxThreadCount(2)
         self.current_file = None
         self.file_type = None
         self.settings = {
@@ -35,6 +64,7 @@ class PreviewWidget(QWidget):
         self.video_timer.timeout.connect(self._next_video_frame)
 
         self.playing = False
+        self._rendering = False
 
         self._init_ui()
 
@@ -83,34 +113,35 @@ class PreviewWidget(QWidget):
             return 'video'
         return None
 
-    def _convert_and_display(self, img: Image.Image):
-        try:
-            result = self.converter.image_to_ascii(
-                img,
-                columns=self.settings['columns'],
-                charset=self.settings['charset'],
-                invert=self.settings['invert'],
-                threshold=self.settings['threshold'],
-                use_colors=self.settings['use_colors'],
-            )
+    def _queue_convert(self, img: Image.Image):
+        if self._rendering:
+            return
+        self._rendering = True
+        task = ConversionTask(self.converter, img, self.settings.copy())
+        task.signals.result_ready.connect(self._on_conversion_done)
+        self.threadpool.start(task)
 
-            if self.settings['use_colors'] and result.colors and result.rows > 0 and result.cols > 0:
-                # For performance, limit colored rendering for large outputs
-                if result.rows * result.cols > 10000:
+    @pyqtSlot(object, bool)
+    def _on_conversion_done(self, result, use_colors):
+        self._rendering = False
+        if isinstance(result, Exception):
+            self.text_edit.setPlainText(f"Error: {result}")
+            return
+        try:
+            if use_colors and result.colors and result.rows > 0 and result.cols > 0:
+                if result.rows * result.cols > 8000:
                     self.text_edit.setPlainText(result.text)
-                    return result
+                    return
                 self.text_edit.setUpdatesEnabled(False)
                 self.text_edit.clear()
                 cursor = self.text_edit.textCursor()
-                fmt = QTextCharFormat()
-                fmt.setFont(self.text_edit.font())
                 lines = result.text.split('\n')
                 for y in range(min(result.rows, len(lines))):
                     line = lines[y]
                     for x in range(min(result.cols, len(line))):
                         ch = line[x]
                         if ch == ' ':
-                            cursor.insertText(' ', fmt)
+                            cursor.insertText(' ', QTextCharFormat())
                             continue
                         r, g, b = result.colors[y][x]
                         cfmt = QTextCharFormat()
@@ -121,15 +152,13 @@ class PreviewWidget(QWidget):
                 self.text_edit.setUpdatesEnabled(True)
             else:
                 self.text_edit.setPlainText(result.text)
-            return result
         except Exception as e:
             self.text_edit.setPlainText(f"Error: {e}")
-            return None
 
     def _load_image(self, filepath):
         try:
             img = Image.open(filepath)
-            self._convert_and_display(img)
+            self._queue_convert(img)
         except Exception as e:
             self.text_edit.setPlainText(f"Error: {e}")
 
@@ -152,7 +181,7 @@ class PreviewWidget(QWidget):
             width, height, fps, frame_count = VideoHandler.get_video_info(filepath)
             gen = VideoHandler.frames_generator(filepath)
             self.video_frames = []
-            max_frames = min(100, frame_count) if frame_count > 0 else 30
+            max_frames = min(80, frame_count) if frame_count > 0 else 25
             step = max(1, frame_count // max_frames) if frame_count > 0 else 1
             frame_idx = 0
             for frame in gen:
@@ -166,18 +195,18 @@ class PreviewWidget(QWidget):
             if self.video_frames:
                 self._render_current_video_frame()
                 if fps and fps > 0:
-                    interval = max(30, int(1000 / min(fps, 15)))
+                    interval = max(40, int(1000 / min(fps, 12)))
                     self.video_timer.start(interval)
         except Exception as e:
             self.text_edit.setPlainText(f"Error: {e}")
 
     def _render_current_gif_frame(self):
         if self.gif_frames and 0 <= self.current_gif_frame < len(self.gif_frames):
-            self._convert_and_display(self.gif_frames[self.current_gif_frame])
+            self._queue_convert(self.gif_frames[self.current_gif_frame])
 
     def _render_current_video_frame(self):
         if self.video_frames and 0 <= self.current_video_frame < len(self.video_frames):
-            self._convert_and_display(self.video_frames[self.current_video_frame])
+            self._queue_convert(self.video_frames[self.current_video_frame])
 
     def _next_gif_frame(self):
         if self.gif_frames:
@@ -197,7 +226,11 @@ class PreviewWidget(QWidget):
     def update_settings(self, settings):
         self.settings.update(settings)
         if self.current_file and self.file_type == 'image':
-            self._load_image(self.current_file)
+            try:
+                img = Image.open(self.current_file)
+                self._queue_convert(img)
+            except Exception:
+                pass
         elif self.file_type == 'gif' and self.gif_frames:
             self._render_current_gif_frame()
         elif self.file_type == 'video' and self.video_frames:
