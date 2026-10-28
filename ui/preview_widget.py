@@ -10,7 +10,7 @@ from PIL import Image
 
 
 class ConversionSignals(QObject):
-    result_ready = pyqtSignal(object, bool, object)  # result, use_colors, img_ref
+    result_ready = pyqtSignal(object, bool, object)
 
 
 class ConversionTask(QRunnable):
@@ -46,12 +46,14 @@ class PreviewWidget(QWidget):
         self.file_type = None
         self.current_img = None
         self.settings = {
-            'columns': 100,
+            'columns': 120,
             'charset': " .:-=+*#%@",
             'threshold': 0,
             'invert': False,
             'use_colors': False,
         }
+        self.bg_color = "#000000"
+        self.text_color = "#ffffff"
 
         self.gif_frames = []
         self.gif_delays = []
@@ -88,10 +90,15 @@ class PreviewWidget(QWidget):
         font.setStyleHint(QFont.StyleHint.Monospace)
         font.setFixedPitch(True)
         self.text_edit.setFont(font)
-        self.text_edit.setStyleSheet("background-color: #000000; color: #ffffff;")
+        self.text_edit.setStyleSheet(f"background-color: {self.bg_color}; color: {self.text_color};")
 
         self.scroll.setWidget(self.text_edit)
         layout.addWidget(self.scroll)
+
+    def update_appearance(self, app):
+        self.bg_color = app.get('bg_color', self.bg_color)
+        self.text_color = app.get('text_color', self.text_color)
+        self.text_edit.setStyleSheet(f"background-color: {self.bg_color}; color: {self.text_color};")
 
     @pyqtSlot(str)
     def load_file(self, filepath):
@@ -146,7 +153,7 @@ class PreviewWidget(QWidget):
             return
         try:
             if use_colors and result.colors and result.rows > 0 and result.cols > 0:
-                if result.rows * result.cols > 6000:
+                if result.rows * result.cols > 5000:
                     self.text_edit.setPlainText(result.text)
                     return
                 self.text_edit.setUpdatesEnabled(False)
@@ -198,7 +205,7 @@ class PreviewWidget(QWidget):
             width, height, fps, frame_count = VideoHandler.get_video_info(filepath)
             gen = VideoHandler.frames_generator(filepath)
             self.video_frames = []
-            max_frames = min(60, frame_count) if frame_count > 0 else 20
+            max_frames = min(50, frame_count) if frame_count > 0 else 15
             step = max(1, frame_count // max_frames) if frame_count > 0 else 1
             frame_idx = 0
             for frame in gen:
@@ -212,7 +219,7 @@ class PreviewWidget(QWidget):
             if self.video_frames:
                 self._render_current_video_frame()
                 if fps and fps > 0:
-                    interval = max(60, int(1000 / min(fps, 10)))
+                    interval = max(80, int(1000 / min(fps, 8)))
                     self.video_timer.start(interval)
         except Exception as e:
             self.text_edit.setPlainText(f"Error: {e}")

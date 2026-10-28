@@ -29,11 +29,9 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # Top bar
         self.topbar = TopBar()
         main_layout.addWidget(self.topbar)
 
-        # Main content area with splitter
         content_widget = QWidget()
         content_layout = QHBoxLayout(content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0)
@@ -43,23 +41,20 @@ class MainWindow(QMainWindow):
         splitter.setHandleWidth(1)
         splitter.setChildrenCollapsible(False)
 
-        # Sidebar
         self.sidebar = Sidebar()
         splitter.addWidget(self.sidebar)
 
-        # Preview
         self.preview = PreviewWidget()
         splitter.addWidget(self.preview)
 
-        # Set initial sizes (sidebar narrower, preview wider)
         splitter.setSizes([280, 920])
 
         content_layout.addWidget(splitter)
         main_layout.addWidget(content_widget)
 
-        # Connect signals
         self.sidebar.file_loaded.connect(self.preview.load_file)
         self.sidebar.settings_changed.connect(self.preview.update_settings)
+        self.sidebar.appearance_changed.connect(self.preview.update_appearance)
         self.topbar.play_toggled.connect(self.preview.toggle_playback)
         self.topbar.frame_changed.connect(self.preview.set_frame)
 
@@ -99,7 +94,9 @@ class MainWindow(QMainWindow):
 
             try:
                 if filter_selected.startswith("PNG"):
-                    AsciiExporter.save_png_from_text(current_text, filepath)
+                    AsciiExporter.save_png_from_text(current_text, filepath,
+                                                     bg_color=tuple(int(self.preview.bg_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)),
+                                                     fg_color=tuple(int(self.preview.text_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)))
                     QMessageBox.information(self, "Export", "Exported successfully")
                 elif filter_selected.startswith("Text"):
                     AsciiExporter.save_text(current_text, filepath)
