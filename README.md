@@ -10,7 +10,7 @@
 
 </div>
 
-## ✨ Features
+## Features
 
 - **Multi-format Support** – Convert images (`PNG`, `JPG`, `JPEG`, `BMP`, `WebP`), GIFs, and videos (`MP4`, `AVI`, `MKV`, `WebM`, `MOV`)
 - **Real-time Preview** – Instantly see your ASCII conversion with live updates as you tweak settings
