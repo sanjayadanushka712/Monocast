@@ -26,7 +26,7 @@ class Sidebar(QWidget):
         self.setMaximumWidth(350)
         self._debounce_timer = QTimer()
         self._debounce_timer.setSingleShot(True)
-        self._debounce_timer.setInterval(150)
+        self._debounce_timer.setInterval(120)
         self._debounce_timer.timeout.connect(self._emit_settings)
         self.bg_color = "#000000"
         self.text_color = "#ffffff"
@@ -45,7 +45,6 @@ class Sidebar(QWidget):
         scroll_layout = QVBoxLayout(scroll_widget)
         scroll_layout.setSpacing(15)
 
-        # File section
         file_group = QGroupBox("Source")
         file_layout = QVBoxLayout(file_group)
 
@@ -60,22 +59,19 @@ class Sidebar(QWidget):
 
         scroll_layout.addWidget(file_group)
 
-        # Conversion settings
         conv_group = QGroupBox("Conversion")
         conv_layout = QVBoxLayout(conv_group)
 
-        # Columns
         conv_layout.addWidget(QLabel("Columns"))
         self.columns_slider = QSlider(Qt.Orientation.Horizontal)
-        self.columns_slider.setRange(40, 400)
-        self.columns_slider.setValue(120)
+        self.columns_slider.setRange(60, 220)
+        self.columns_slider.setValue(140)
         self.columns_slider.valueChanged.connect(self._on_settings_changed)
-        self.columns_label = QLabel("120")
+        self.columns_label = QLabel("140")
         self.columns_slider.valueChanged.connect(lambda v: self.columns_label.setText(str(v)))
         conv_layout.addWidget(self.columns_slider)
         conv_layout.addWidget(self.columns_label)
 
-        # Charset
         conv_layout.addWidget(QLabel("Charset"))
         self.charset_combo = QComboBox()
         from core.palettes import ASCII_CHAR_PRESETS
@@ -83,34 +79,30 @@ class Sidebar(QWidget):
         for preset in ASCII_CHAR_PRESETS:
             self.charset_combo.addItem(f"{preset['label']}")
             self.charsets.append(preset['chars'])
-        self.charset_combo.setCurrentIndex(2)
+        self.charset_combo.setCurrentIndex(0)
         self.charset_combo.currentIndexChanged.connect(self._on_settings_changed)
         conv_layout.addWidget(self.charset_combo)
 
-        # Threshold
         conv_layout.addWidget(QLabel("Threshold"))
         self.threshold_slider = QSlider(Qt.Orientation.Horizontal)
         self.threshold_slider.setRange(-100, 100)
-        self.threshold_slider.setValue(0)
+        self.threshold_slider.setValue(-5)
         self.threshold_slider.valueChanged.connect(self._on_settings_changed)
-        self.threshold_label = QLabel("0")
+        self.threshold_label = QLabel("-5")
         self.threshold_slider.valueChanged.connect(lambda v: self.threshold_label.setText(str(v)))
         conv_layout.addWidget(self.threshold_slider)
         conv_layout.addWidget(self.threshold_label)
 
-        # Invert
         self.invert_check = QCheckBox("Invert")
         self.invert_check.stateChanged.connect(self._on_settings_changed)
         conv_layout.addWidget(self.invert_check)
 
-        # Use colors
         self.colors_check = QCheckBox("Use Colors")
         self.colors_check.stateChanged.connect(self._on_settings_changed)
         conv_layout.addWidget(self.colors_check)
 
         scroll_layout.addWidget(conv_group)
 
-        # Appearance
         app_group = QGroupBox("Appearance")
         app_layout = QVBoxLayout(app_group)
 
@@ -152,7 +144,7 @@ class Sidebar(QWidget):
     def _emit_settings(self):
         settings = {
             'columns': self.columns_slider.value(),
-            'charset': self.charsets[self.charset_combo.currentIndex()] if self.charsets else " .:-=+*#%@",
+            'charset': self.charsets[self.charset_combo.currentIndex()] if self.charsets else " .'`^,:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
             'threshold': self.threshold_slider.value(),
             'invert': self.invert_check.isChecked(),
             'use_colors': self.colors_check.isChecked(),
