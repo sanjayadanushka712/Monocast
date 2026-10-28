@@ -6,9 +6,7 @@
 [![PyQt6](https://img.shields.io/badge/PyQt6-41CD52?style=for-the-badge&logo=qt&logoColor=white)](https://www.riverbankcomputing.com/software/pyqt/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-**Transform images, GIFs, and videos into stunning real-time ASCII art.**
-
-*A lightweight PyQt desktop application inspired by [Glyphcast](https://glyphcast.app).*
+**Transform images, GIFs, and videos into real-time ASCII art.**
 
 </div>
 
@@ -71,7 +69,7 @@ Monocast/
 
 ## 🎨 How It Works
 
-Monocast uses the ITU-R BT.601 standard for luminance calculation, matching the approach used by modern ASCII art tools:
+Monocast uses the ITU-R BT.601 standard for luminance calculation:
 
 1. **Downsample** – Images are resized to the target ASCII grid based on column count and aspect ratio
 2. **Calculate Luminance** – Each pixel's brightness is computed using `0.299R + 0.587G + 0.114B`
@@ -81,8 +79,3 @@ Monocast uses the ITU-R BT.601 standard for luminance calculation, matching the 
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Inspired by [Glyphcast](https://glyphcast.app) - an incredible web-based ASCII studio
-- Built with love for ASCII art enthusiasts
