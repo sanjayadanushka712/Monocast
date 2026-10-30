@@ -45,6 +45,13 @@ pip install -r requirements.txt
 python main.py
 ```
 
+### Usage
+
+1. Click **Open File...** in the sidebar and pick an image, GIF or video
+2. Adjust **Columns**, **Charset**, **Threshold**, **Invert** and **Use Colors**. The preview updates live
+3. For GIFs and videos, use **Play** and the frame slider in the top bar
+4. Click **Export** to save as PNG, TXT or JSON
+
 ## 🛠️ Tech Stack
 
 | Technology | Purpose |
