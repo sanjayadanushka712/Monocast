@@ -20,6 +20,14 @@
 - **Multiple Export Options** – Save as PNG, plain text, or JSON
 - **Clean Dark UI** – Minimal, distraction-free interface with sidebar controls and live preview
 
+## 📸 Screenshot
+
+<div align="center">
+
+![Monocast converting an image to ASCII art](assets/screenshot.png)
+
+</div>
+
 ## 🚀 Getting Started
 
 ### Prerequisites
