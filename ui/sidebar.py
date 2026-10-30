@@ -126,10 +126,11 @@ class Sidebar(QWidget):
     def _load_file(self):
         file_dialog = QFileDialog(self)
         file_dialog.setNameFilter(
-            "All Supported (*.png *.jpg *.jpeg *.bmp *.gif *.mp4 *.avi *.mkv *.webm);;"
-            "Images (*.png *.jpg *.jpeg *.bmp);;"
-            "GIFs (*.gif);;"
-            "Videos (*.mp4 *.avi *.mkv *.webm)"
+         "All Supported (*.png *.jpg *.jpeg *.bmp *.webp *.gif *.mp4 *.avi *.mkv *.webm *.mov);;"
+         "Images (*.png *.jpg *.jpeg *.bmp *.webp);;"
+         "GIFs (*.gif);;"
+         "Videos (*.mp4 *.avi *.mkv *.webm *.mov)"
+
         )
         if file_dialog.exec():
             files = file_dialog.selectedFiles()
